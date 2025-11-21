@@ -109,6 +109,11 @@ For immediate development/testing, find a working public RPC service:
 - Restrict RPC access to localhost
 - Consider using TLS/SSL
 
+check zebra node sync
+```dash
+curl -s --user "$(cat ~/.cache/zebra/.cookie)" --data-binary '{"jsonrpc": "1.0", "id": "sync_check", "method": "getblockchaininfo", "params": []}' -H 'content-type: text/plain;' http://127.0.0.1:8232/ | jq '.result | {chain, blocks, estimatedheight, verificationprogress, sync_percentage: (.verificationprogress * 100 | round)}'
+```
+
 ## Support
 
 Your setup is 90% complete. You just need to get a working Zcash node binary. The zcashd approach is your best bet for immediate success.

@@ -15,7 +15,7 @@ export function createMockZcashRPC() {
       blocks: 12345,
       chain: 'test'
     }),
-    generateZAddress: jest.fn().mockResolvedValue('ztestsapling1234567890abcdef'),
+    generateAddress: jest.fn().mockResolvedValue('t1testtransparent1234567890abcdef'),
     getReceivedByAddress: jest.fn().mockResolvedValue(0),
     sendMany: jest.fn().mockResolvedValue('opid123'),
     validateAddress: jest.fn().mockResolvedValue({ isvalid: true })

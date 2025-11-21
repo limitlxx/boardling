@@ -60,11 +60,16 @@ export const config = {
 // Validate required environment variables
 const requiredEnvVars = [
   'DB_HOST', 'DB_USER', 'DB_PASS', 'DB_NAME',
-  'ZCASH_RPC_URL', 'ZCASH_RPC_USER', 'ZCASH_RPC_PASS'
+  'ZCASH_RPC_URL'
 ];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
     throw new Error(`Missing required environment variable: ${envVar}`);
   }
+}
+
+// Optional RPC auth (some nodes like Zebra don't require it)
+if (!process.env.ZCASH_RPC_USER || !process.env.ZCASH_RPC_PASS) {
+  console.log('⚠️ Warning: ZCASH_RPC_USER/PASS not set - using no authentication');
 }
