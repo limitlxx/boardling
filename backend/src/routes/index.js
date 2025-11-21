@@ -15,6 +15,8 @@ import shieldedRouter from "./shielded.js";
 import webzjsRouter from "./webzjs.js";
 import zcashDevtoolRouter from "./zcash-devtool.js";
 import alternativesRouter from "./alternatives.js";
+import unifiedRouter from "./unified.js";
+import unifiedInvoiceRouter from "./unified-invoice.js";
 
 // Import authentication middleware
 import {
@@ -168,17 +170,29 @@ router.get("/api", (req, res) => {
         },
       },
       invoices: {
+        "POST /api/invoice/unified/create": {
+          auth: "optional",
+          description: "Create unified payment invoice (supports all methods)",
+        },
+        "POST /api/invoice/unified/check": {
+          auth: "optional",
+          description: "Check unified payment status",
+        },
+        "GET /api/invoice/unified/:id": {
+          auth: "optional",
+          description: "Get unified invoice details",
+        },
         "POST /api/invoice/create": {
           auth: "optional",
-          description: "Create payment invoice",
+          description: "Create payment invoice (legacy transparent)",
         },
         "POST /api/invoice/check": {
           auth: "optional",
-          description: "Check payment status",
+          description: "Check payment status (legacy)",
         },
         "GET /api/invoice/:id": {
           auth: "optional",
-          description: "Get invoice details",
+          description: "Get invoice details (legacy)",
         },
         "GET /api/invoice/:id/qr": {
           auth: "optional",
@@ -356,6 +370,36 @@ router.get("/api", (req, res) => {
           description: "Compare setup complexity and features",
         },
       },
+      unified: {
+        "GET /api/unified/config": {
+          auth: "optional",
+          description: "Get ZIP-316 unified address configuration",
+        },
+        "POST /api/unified/address/create": {
+          auth: "optional",
+          description: "Create ZIP-316 compliant unified address",
+        },
+        "POST /api/unified/address/validate": {
+          auth: "optional",
+          description: "Validate unified address format",
+        },
+        "GET /api/unified/address/user/:user_id": {
+          auth: "optional",
+          description: "Get user's unified addresses",
+        },
+        "GET /api/unified/address/:address_id/details": {
+          auth: "optional",
+          description: "Get unified address details and receivers",
+        },
+        "POST /api/unified/invoice/create": {
+          auth: "optional",
+          description: "Create unified invoice for multiple pools",
+        },
+        "GET /api/unified/guide": {
+          auth: "optional",
+          description: "Get ZIP-316 implementation guide",
+        },
+      },
     },
     health_check: "GET /health",
   });
@@ -449,7 +493,10 @@ router.use("/api/keys", authenticateApiKey, apiKeysRouter);
 // User routes (mixed authentication requirements)
 router.use("/api/users", usersRouter);
 
-// Invoice routes (optional authentication)
+// Unified Invoice routes (recommended - supports all payment methods)
+router.use("/api/invoice/unified", unifiedInvoiceRouter);
+
+// Invoice routes (optional authentication - legacy transparent only)
 router.use("/api/invoice", invoiceRouter);
 
 // Withdrawal routes (mixed authentication requirements)
@@ -470,6 +517,9 @@ router.use("/api/shielded", shieldedRouter);
 router.use("/api/webzjs", webzjsRouter);
 router.use("/api/zcash-devtool", zcashDevtoolRouter);
 router.use("/api/alternatives", alternativesRouter);
+
+// Unified address routes (ZIP-316 compliant)
+router.use("/api/unified", unifiedRouter);
 
 /**
  * Error handling
