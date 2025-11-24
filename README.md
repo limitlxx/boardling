@@ -6,7 +6,7 @@ A modern web application with Zcash blockchain integration.
 
 ```
 ├── backend/           # Node.js backend API
-├── frontend/          # React frontend application
+├── api-frontend/      # React frontend application (renamed from frontend)
 ├── config/            # Configuration files
 │   └── zcash/         # Zcash node configurations
 ├── docs/              # Documentation
@@ -35,7 +35,7 @@ npm start
 
 ### Frontend
 ```bash
-cd frontend
+cd api-frontend
 npm install
 npm start
 ```
@@ -50,7 +50,7 @@ npm start
 
 - Zcash configurations: `config/zcash/`
 - Backend environment: `backend/.env`
-- Frontend configuration: `frontend/src/config/`
+- Frontend configuration: `api-frontend/src/config/`
 
 ## Services
 
