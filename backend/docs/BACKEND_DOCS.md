@@ -3,6 +3,7 @@ Here is the **complete, production-ready Node.js + Express + PostgreSQL backend*
 Just `node index.js` → fully working.
 
 ### Folder Structure
+
 ```
 backend/
 ├── src/
@@ -21,6 +22,7 @@ backend/
 ```
 
 ### 1. `package.json`
+
 ```json
 {
   "name": "zcash-paywall-node",
@@ -43,6 +45,7 @@ backend/
 ```
 
 ### 2. `.env`
+
 ```env
 PORT=3000
 
@@ -58,9 +61,10 @@ ZCASH_RPC_PASS=yourlongpassword
 ```
 
 ### 3. `src/db.js` — Raw SQL Connection
+
 ```js
-import { Pool } from 'pg';
-import dotenv from 'dotenv';
+import { Pool } from "pg";
+import dotenv from "dotenv";
 dotenv.config();
 
 export const pool = new Pool({
@@ -73,14 +77,15 @@ export const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
-pool.on('error', (err) => {
-  console.error('PostgreSQL pool error:', err);
+pool.on("error", (err) => {
+  console.error("PostgreSQL pool error:", err);
 });
 ```
 
 ### 4. `src/zcash.js` — Zcash RPC
+
 ```js
-import axios from 'axios';
+import axios from "axios";
 
 const rpc = {
   url: process.env.ZCASH_RPC_URL,
@@ -91,16 +96,20 @@ const rpc = {
 };
 
 export async function zcashRpc(method, params = []) {
-  const res = await axios.post(rpc.url, {
-    jsonrpc: '1.0',
-    id: Date.now(),
-    method,
-    params,
-  }, {
-    auth: rpc.auth,
-    headers: { 'Content-Type': 'text/plain' },
-    timeout: 30000,
-  });
+  const res = await axios.post(
+    rpc.url,
+    {
+      jsonrpc: "1.0",
+      id: Date.now(),
+      method,
+      params,
+    },
+    {
+      auth: rpc.auth,
+      headers: { "Content-Type": "text/plain" },
+      timeout: 30000,
+    }
+  );
 
   if (res.data.error) throw new Error(res.data.error.message);
   return res.data.result;
@@ -108,6 +117,7 @@ export async function zcashRpc(method, params = []) {
 ```
 
 ### 5. `src/fees.js`
+
 ```js
 export const FEES = {
   fixed: 0.0005,
@@ -120,22 +130,27 @@ export function calculateFee(amount) {
   const totalFee = Math.max(FEES.fixed + percentFee, FEES.minimum);
   const net = amount - totalFee;
   if (net < 0.00000001) throw new Error("Amount too low after fees");
-  return { amount: Number(amount.toFixed(8)), fee: Number(totalFee.toFixed(8)), net: Number(net.toFixed(8)) };
+  return {
+    amount: Number(amount.toFixed(8)),
+    fee: Number(totalFee.toFixed(8)),
+    net: Number(net.toFixed(8)),
+  };
 }
 ```
 
 ### 6. `src/routes/invoice.js`
+
 ```js
-import express from 'express';
-import { pool } from '../db.js';
-import { zcashRpc } from '../zcash.js';
+import express from "express";
+import { pool } from "../db.js";
+import { zcashRpc } from "../zcash.js";
 const router = express.Router();
 
 // Create invoice + generate z-address
-router.post('/create', async (req, res) => {
+router.post("/create", async (req, res) => {
   const { user_id, type, amount_zec, item_id } = req.body;
   try {
-    const zAddress = await zcashRpc('z_getnewaddress');
+    const zAddress = await zcashRpc("z_getnewaddress");
     const result = await pool.query(
       `INSERT INTO invoices (user_id, type, amount_zec, z_address, item_id, status)
        VALUES ($1, $2, $3, $4, $5, 'pending') RETURNING *`,
@@ -148,16 +163,21 @@ router.post('/create', async (req, res) => {
 });
 
 // Check payment
-router.post('/check', async (req, res) => {
+router.post("/check", async (req, res) => {
   const { invoice_id } = req.body;
   try {
-    const invRes = await pool.query('SELECT * FROM invoices WHERE id = $1', [invoice_id]);
+    const invRes = await pool.query("SELECT * FROM invoices WHERE id = $1", [
+      invoice_id,
+    ]);
     const invoice = invRes.rows[0];
-    if (!invoice || invoice.status === 'paid') {
-      return res.json({ paid: invoice?.status === 'paid' });
+    if (!invoice || invoice.status === "paid") {
+      return res.json({ paid: invoice?.status === "paid" });
     }
 
-    const received = await zcashRpc('z_listreceivedbyaddress', [0, [invoice.z_address]]);
+    const received = await zcashRpc("z_listreceivedbyaddress", [
+      0,
+      [invoice.z_address],
+    ]);
     const total = received.reduce((s, r) => s + r.amount, 0);
 
     if (total >= parseFloat(invoice.amount_zec)) {
@@ -180,15 +200,16 @@ export default router;
 ```
 
 ### 7. `src/routes/withdraw.js`
+
 ```js
-import express from 'express';
-import { pool } from '../db.js';
-import { zcashRpc } from '../zcash.js';
-import { calculateFee } from '../fees.js';
+import express from "express";
+import { pool } from "../db.js";
+import { zcashRpc } from "../zcash.js";
+import { calculateFee } from "../fees.js";
 const router = express.Router();
 
 // Request withdrawal
-router.post('/create', async (req, res) => {
+router.post("/create", async (req, res) => {
   const { user_id, to_address, amount_zec } = req.body;
   try {
     const { amount, fee, net } = calculateFee(amount_zec);
@@ -204,33 +225,44 @@ router.post('/create', async (req, res) => {
 });
 
 // Process withdrawal (admin or cron)
-router.post('/process/:id', async (req, res) => {
+router.post("/process/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const wRes = await pool.query('SELECT * FROM withdrawals WHERE id = $1 AND status = $2', [id, 'pending']);
+    const wRes = await pool.query(
+      "SELECT * FROM withdrawals WHERE id = $1 AND status = $2",
+      [id, "pending"]
+    );
     const w = wRes.rows[0];
-    if (!w) return res.status(400).json({ error: 'Not found or already processed' });
+    if (!w)
+      return res.status(400).json({ error: "Not found or already processed" });
 
-    await pool.query("UPDATE withdrawals SET status='processing' WHERE id=$1", [id]);
+    await pool.query("UPDATE withdrawals SET status='processing' WHERE id=$1", [
+      id,
+    ]);
 
-    const opid = await zcashRpc('z_sendmany', ['', [{ address: w.to_address, amount: w.net_zec }]]);
+    const opid = await zcashRpc("z_sendmany", [
+      "",
+      [{ address: w.to_address, amount: w.net_zec }],
+    ]);
     let status;
     for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 3000));
-      const ops = await zcashRpc('z_getoperationstatus', [[opid]]);
+      await new Promise((r) => setTimeout(r, 3000));
+      const ops = await zcashRpc("z_getoperationstatus", [[opid]]);
       status = ops[0];
-      if (status.status !== 'executing') break;
+      if (status.status !== "executing") break;
     }
 
-    if (status.status === 'success') {
+    if (status.status === "success") {
       await pool.query(
         "UPDATE withdrawals SET status='sent', txid=$1, processed_at=NOW() WHERE id=$2",
         [status.result.txid, id]
       );
       res.json({ success: true, txid: status.result.txid });
     } else {
-      await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [id]);
-      res.status(500).json({ error: 'Send failed' });
+      await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [
+        id,
+      ]);
+      res.status(500).json({ error: "Send failed" });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -241,16 +273,17 @@ export default router;
 ```
 
 ### 7.1 `src/routes/withdraw_to_platform.js`
-```js
-// src/routes/withdraw_to_platform.js 
 
-import { zcashRpc } from '../zcash.js';
+```js
+// src/routes/withdraw_to_platform.js
+
+import { zcashRpc } from "../zcash.js";
 
 // YOUR PLATFORM TREASURY ADDRESS (change this!)
-const PLATFORM_TREASURY_ADDRESS = "t1YourPlatformTreasury1111111111111111111"; 
+const PLATFORM_TREASURY_ADDRESS = "t1YourPlatformTreasury1111111111111111111";
 // Can be t-address OR z-address — both work perfectly
 
-router.post('/process/:id', async (req, res) => {
+router.post("/process/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -260,10 +293,15 @@ router.post('/process/:id', async (req, res) => {
       [id]
     );
     const w = wRes.rows[0];
-    if (!w) return res.status(400).json({ error: 'Withdrawal not found or already processed' });
+    if (!w)
+      return res
+        .status(400)
+        .json({ error: "Withdrawal not found or already processed" });
 
     // 2. Mark as processing
-    await pool.query("UPDATE withdrawals SET status='processing' WHERE id=$1", [id]);
+    await pool.query("UPDATE withdrawals SET status='processing' WHERE id=$1", [
+      id,
+    ]);
 
     // 3. Build recipients array with treasury split
     const recipients = [
@@ -277,31 +315,34 @@ router.post('/process/:id', async (req, res) => {
         address: PLATFORM_TREASURY_ADDRESS,
         amount: Number(w.fee_zec),
         // Optional memo if treasury is a z-address
-        memo: w.to_address.startsWith('z')
-          ? Buffer.from(`Fee from withdrawal ${w.id} | User ${w.user_id}`, 'utf8').toString('hex')
+        memo: w.to_address.startsWith("z")
+          ? Buffer.from(
+              `Fee from withdrawal ${w.id} | User ${w.user_id}`,
+              "utf8"
+            ).toString("hex")
           : undefined,
-      }
+      },
     ];
 
     // 4. Send in ONE transaction (atomic, no risk)
-    const opid = await zcashRpc('z_sendmany', [
-      '',           // from default account
+    const opid = await zcashRpc("z_sendmany", [
+      "", // from default account
       recipients,
-      1,            // minconf
-      0.0001        // fee
+      1, // minconf
+      0.0001, // fee
     ]);
 
     // 5. Poll until complete
     let status;
     for (let i = 0; i < 50; i++) {
-      await new Promise(r => setTimeout(r, 2500));
-      const ops = await zcashRpc('z_getoperationstatus', [[opid]]);
+      await new Promise((r) => setTimeout(r, 2500));
+      const ops = await zcashRpc("z_getoperationstatus", [[opid]]);
       status = ops[0];
-      if (status.status !== 'executing' && status.status !== 'queued') break;
+      if (status.status !== "executing" && status.status !== "queued") break;
     }
 
     // 6. Final status update
-    if (status.status === 'success') {
+    if (status.status === "success") {
       const txid = status.result?.txid || status.txid;
       await pool.query(
         `UPDATE withdrawals 
@@ -318,30 +359,35 @@ router.post('/process/:id', async (req, res) => {
         txid,
         user_received: w.net_zec,
         platform_fee: w.fee_zec,
-        treasury_address: PLATFORM_TREASURY_ADDRESS
+        treasury_address: PLATFORM_TREASURY_ADDRESS,
       });
     } else {
-      await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [id]);
-      return res.status(500).json({ error: 'Transaction failed', details: status.error });
+      await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [
+        id,
+      ]);
+      return res
+        .status(500)
+        .json({ error: "Transaction failed", details: status.error });
     }
-
   } catch (err) {
-    console.error('Withdrawal error:', err);
-    await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [id]);
+    console.error("Withdrawal error:", err);
+    await pool.query("UPDATE withdrawals SET status='failed' WHERE id=$1", [
+      id,
+    ]);
     res.status(500).json({ error: err.message });
   }
 });
-
 ```
 
 ### 8. `src/index.js` — Main Server
+
 ```js
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import invoiceRouter from './routes/invoice.js';
-import withdrawRouter from './routes/withdraw.js';
-import { pool } from './db.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import invoiceRouter from "./routes/invoice.js";
+import withdrawRouter from "./routes/withdraw.js";
+import { pool } from "./db.js";
 
 dotenv.config();
 const app = express();
@@ -349,16 +395,16 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/invoice', invoiceRouter);
-app.use('/api/withdraw', withdrawRouter);
+app.use("/api/invoice", invoiceRouter);
+app.use("/api/withdraw", withdrawRouter);
 
 // Health check
-app.get('/health', async (req, res) => {
+app.get("/health", async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'OK', db: 'connected', zcash: 'ready' });
+    await pool.query("SELECT 1");
+    res.json({ status: "OK", db: "connected", zcash: "ready" });
   } catch (err) {
-    res.status(500).json({ status: 'error', error: err.message });
+    res.status(500).json({ status: "error", error: err.message });
   }
 });
 
@@ -379,12 +425,12 @@ node src/index.js
 
 ### API Endpoints
 
-| Method | URL                        | Body                              | Purpose                     |
-|--------|----------------------------|-----------------------------------|-----------------------------|
-| POST   | `/api/invoice/create`      | `{ user_id, type, amount_zec }`   | Create payment              |
-| POST   | `/api/invoice/check`       | `{ invoice_id }`                  | Detect payment              |
-| POST   | `/api/withdraw/create`     | `{ user_id, to_address, amount_zec }` | Request cashout         |
-| POST   | `/api/withdraw/process/:id`| —                                 | Send ZEC (admin/cron)       |
+| Method | URL                         | Body                                  | Purpose               |
+| ------ | --------------------------- | ------------------------------------- | --------------------- |
+| POST   | `/api/invoice/create`       | `{ user_id, type, amount_zec }`       | Create payment        |
+| POST   | `/api/invoice/check`        | `{ invoice_id }`                      | Detect payment        |
+| POST   | `/api/withdraw/create`      | `{ user_id, to_address, amount_zec }` | Request cashout       |
+| POST   | `/api/withdraw/process/:id` | —                                     | Send ZEC (admin/cron) |
 
 You now have a **battle-tested, pure Node.js + SQL Zcash backend** used by real platforms earning **$50K+/month** in 2025.
 
