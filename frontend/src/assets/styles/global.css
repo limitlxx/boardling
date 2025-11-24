@@ -1,1 +1,28 @@
-/* Global styles */
+@import './base/_variables.css';
+@import './base/_reset.css';
+@import './base/_typography.css';
+
+/*
+ * Boardling - Global Stylesheet
+ * --------------------------------------------------
+ * This file contains base styles for the entire application.
+ * Design tokens, resets, and typography are imported from other files.
+ */
+
+/* 3. Base Application Layout
+   Based on the wireframe: Top Navbar, Left Sidebar, Main Content
+-------------------------------------------------- */
+.app-container {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  grid-template-areas:
+    'sidebar header'
+    'sidebar main';
+  height: 100vh;
+}
+
+/* You would assign these grid-area names to your components */
+/* .app-header { grid-area: header; } */
+/* .app-sidebar { grid-area: sidebar; } */
+/* .app-main-content { grid-area: main; } */
